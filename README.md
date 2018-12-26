@@ -6,4 +6,4 @@ Copy join_paths.py and join_paths.inx in the user extension folder. The extensio
 
 # Usage
 The effect is under Extensions->Modify Path menu. Select the paths that are to be joined and invoke the 'Join Paths' menu option. If the ending nodes of the paths to be joined don't coincide, an extra segment is created.<br>
-
+Quick Introduction: https://youtu.be/mC7rtjkT4kc
