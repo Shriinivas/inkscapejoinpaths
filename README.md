@@ -1,3 +1,4 @@
+![Demo](https://github.com/Shriinivas/inkscapejoinpaths/blob/master/git.gif)
 # Inkscape Extension For Joining Paths<br>
 This extension lets the user join SVG paths <br>
 
