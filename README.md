@@ -3,16 +3,14 @@
 This extension lets the user join SVG paths <br>
 
 # Installation
-There are two variants of this extension.<br>
+There are two variants of this extension.<br><br>
 <b>Without Optimized Option</b><br>
-Script Files join_paths.py and join_paths.inx<br>
+Script Files join_paths.py and join_paths.inx<br><br>
 <b>With Optimized Option</b><br>
 Script Files join_paths_optim.py and join_paths_optim.inx<br><br>
-
 To install the extension copy the py and inx files in the user extension folder. The extension folder can be found from Edit->Preference dialog in the System option. You will need to restart inkscape after the files are copied.<br><br>
-
 # Usage
-After installation the extensions will be under Extensions->Modify Path menu. 
+After installation the extensions will be under Extensions->Modify Path menu. <br><br>
 <b>Without Optimized Option</b><br>
 Select the paths that are to be joined and invoke the 'Join Paths' menu option. The selected paths will be joined based on their Z-order (i.e. the lowest one in the document first and then the next one and so on) at their end nodes with a straight line segment. <br>
 If the ending nodes of the paths coincide, they are merged and no new segment is created.<br><br>
