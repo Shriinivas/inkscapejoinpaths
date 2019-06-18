@@ -71,23 +71,34 @@ def getArrangedIds(pathMap, startPathId):
         minDist = 9e+100 #A large float
         closestId = None        
         np = pathMap[nextPathId]
-        npEnd = np[-1][-1][-1]
+        npPts = [np[-1][-1][-1]]
+        if(len(orderPathIds) == 1):#compare both the ends for the first path
+            npPts.append(np[0][0][0])
+        
         for key in pathMap:
             if(key in orderPathIds):
                 continue
             parts = pathMap[key] 
             start = parts[0][0][0]
             end = parts[-1][-1][-1]
-            dist = abs(start[0] - npEnd[0]) + abs(start[1] - npEnd[1])
-            if(dist < minDist):
-                minDist = dist
-                closestId = key
-            dist = abs(end[0] - npEnd[0]) + abs(end[1] - npEnd[1])
-            if(dist < minDist):
-                minDist = dist
-                pathMap[key] = [[[pts for pts in reversed(seg)] for seg in \
-                    reversed(part)] for part in reversed(parts)]
-                closestId = key
+            
+            for i, npPt in enumerate(npPts):
+                dist = abs(start[0] - npPt[0]) + abs(start[1] - npPt[1])
+                if(dist < minDist):
+                    minDist = dist
+                    closestId = key
+                dist = abs(end[0] - npPt[0]) + abs(end[1] - npPt[1])
+                if(dist < minDist):
+                    minDist = dist
+                    pathMap[key] = [[[pts for pts in reversed(seg)] for seg in \
+                        reversed(part)] for part in reversed(parts)]
+                    closestId = key
+                    
+                #If start point of the first path is closer reverse its direction    
+                if(i > 0 and closestId == key):
+                    pathMap[nextPathId] = [[[pts for pts in reversed(seg)] for seg in \
+                        reversed(part)] for part in reversed(np)]
+                    
         orderPathIds.append(closestId)
         nextPathId = closestId
     return orderPathIds
