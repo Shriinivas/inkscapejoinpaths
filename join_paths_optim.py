@@ -112,7 +112,8 @@ class JoinPathsOptimEffect(inkex.Effect):
         paths = {p.get('id'): getPartsFromCubicSuper(cubicsuperpath.parsePath(p.get('d'))) \
             for p in  pathNodes if (p.get('id') in selections.keys() and p.get('d') != "")}
             
-        pathIds = [p.get('id') for p in  pathNodes]#paths.keys() Order disturbed
+        #paths.keys() Order disturbed
+        pathIds = [p.get('id') for p in pathNodes if (p.get('id') in paths.keys())]
         
         if(len(paths) > 1):
             if(self.options.optimized):
