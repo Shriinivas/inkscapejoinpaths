@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 '''
 Inkscape extension to join the selected paths. With the optimized option selected, 
@@ -22,7 +22,8 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 '''
 
-import inkex, cubicsuperpath
+import inkex
+from inkex.paths import CubicSuperPath
 import copy
 
 def floatCmpWithMargin(float1, float2, margin):
@@ -107,24 +108,17 @@ class JoinPathsOptimEffect(inkex.Effect):
 
     def __init__(self):
         inkex.Effect.__init__(self)
-
-        self.OptionParser.add_option("--optimized",
-                        action="store", type="inkbool", 
-                        dest="optimized", default=True)
-
-        self.OptionParser.add_option("--tab", action="store", 
-          type="string", dest="tab", default="sampling", help="Tab") 
+        self.arg_parser.add_argument("--optimized", type=inkex.Boolean, default=True)
+        self.arg_parser.add_argument("--tab", default="sampling", help="Tab") 
           
-
     def effect(self):
-        selections = self.selected        
+        selections = self.svg.selected        
         pathNodes = self.document.xpath('//svg:path',namespaces=inkex.NSS)
 
-        paths = {p.get('id'): getPartsFromCubicSuper(cubicsuperpath.parsePath(p.get('d'))) \
-            for p in  pathNodes if (p.get('id') in selections.keys() and p.get('d') != "")}
+        paths = {p.get('id'): getPartsFromCubicSuper(CubicSuperPath(p.get('d'))) for p in  pathNodes }
             
         #paths.keys() Order disturbed
-        pathIds = [p.get('id') for p in pathNodes if (p.get('id') in paths.keys())]
+        pathIds = [p.get('id') for p in pathNodes]
         
         if(len(paths) > 1):
             if(self.options.optimized):
@@ -137,7 +131,7 @@ class JoinPathsOptimEffect(inkex.Effect):
                 parts = paths[key]
                 # ~ parts = getPartsFromCubicSuper(cspath)
                 start = parts[0][0][0]
-                elem = selections[key]
+                elem = self.svg.selected[key]
                 
                 if(len(newParts) == 0):
                     newParts += parts[:]
@@ -153,15 +147,14 @@ class JoinPathsOptimEffect(inkex.Effect):
                     if(len(parts) > 1):
                         newParts += parts[1:]
                 
-                parent = self.getParentNode(elem)
+                parent = elem.getparent()
                 idx = parent.index(elem)
                 parent.remove(elem)
 
             newElem = copy.copy(firstElem)
             oldId = firstElem.get('id')
-            newElem.set('d', cubicsuperpath.formatPath(getCubicSuperFromParts(newParts)))
+            newElem.set('d', CubicSuperPath(getCubicSuperFromParts(newParts)))
             newElem.set('id', oldId + '_joined')
             parent.insert(idx, newElem)
 
-effect = JoinPathsOptimEffect()
-effect.affect()
+JoinPathsOptimEffect().run()
