@@ -1,3 +1,4 @@
+### (Compatible with Inkscape versions 1.0 and 0.92)
 ![Demo](https://github.com/Shriinivas/etc/blob/master/inkscapejoinpaths/illustrations/inkscape_joinpaths_demo.gif)
 # Inkscape Extension For Joining Paths<br>
 This extension lets the user join SVG paths <br>
