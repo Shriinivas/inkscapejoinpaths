@@ -20,8 +20,15 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 '''
 
-import inkex, cubicsuperpath
-import copy
+import inkex, copy
+
+try:
+    from inkex.paths import Path, CubicSuperPath
+    ver = 1.0 
+except:
+    import simplepath, cubicsuperpath
+    from cubicsuperpath import CubicSuperPath
+    ver = 0.92
 
 def floatCmpWithMargin(float1, float2, margin):
     return abs(float1 - float2) < margin 
@@ -41,7 +48,33 @@ def getPartsFromCubicSuper(cspath):
             prevBezPt = bezierPt
         parts.append(part)
     return parts
-        
+
+def runEffect(effect):
+    if(ver == 1.0): effect.run()
+    else: effect.affect()
+
+######### Function variants for 1.0 and 0.92 - Start ##########
+
+def formatSuperPath(csp):
+    if(ver == 1.0):
+        return csp.__str__()
+    else:
+        return cubicsuperpath.formatPath(csp)
+
+def getParent(effect, elem):
+    if(ver == 1.0): 
+        return elem.getparent()
+    else:
+        return effect.getParentNode(elem)
+
+def getCubicSuperPath(d = None):
+    if(ver == 1.0):
+        if(d == None): return CubicSuperPath([])
+        return CubicSuperPath(Path(d).to_superpath())
+    else:
+        if(d == None): return []
+        return CubicSuperPath(simplepath.parsePath(d))
+
 def getCubicSuperFromParts(parts):
     cbsuper = []
     for part in parts:
@@ -58,7 +91,18 @@ def getCubicSuperFromParts(parts):
             pt = seg[3]
         subpath.append([ptLeft, pt, pt])
         cbsuper.append(subpath)
-    return cbsuper
+    if(ver == 1.0):
+        return CubicSuperPath(cbsuper)
+    else:
+        return cbsuper
+
+def getSVGElem(effect):
+    if(ver == 1.0): 
+        return effect.svg
+    else: 
+        return effect
+
+######### Function variants for 1.0 and 0.92 - End ##########
 
 class JoinPathsEffect(inkex.Effect):
 
@@ -66,10 +110,10 @@ class JoinPathsEffect(inkex.Effect):
         inkex.Effect.__init__(self)
 
     def effect(self):
-        selections = self.selected        
+        selections = getSVGElem(self).selected        
         pathNodes = self.document.xpath('//svg:path',namespaces=inkex.NSS)
 
-        paths = [(pathNode.get('id'), cubicsuperpath.parsePath(pathNode.get('d'))) \
+        paths = [(pathNode.get('id'), getCubicSuperPath(pathNode.get('d'))) \
             for pathNode in  pathNodes if (pathNode.get('id') in selections.keys() \
             and pathNode.get('d') != "")]
 
@@ -95,15 +139,14 @@ class JoinPathsEffect(inkex.Effect):
                     if(len(parts) > 1):
                         newParts += parts[1:]
                 
-                parent = self.getParentNode(elem)
+                parent = getParent(self, elem)
                 idx = parent.index(elem)
                 parent.remove(elem)
 
             newElem = copy.copy(firstElem)
             oldId = firstElem.get('id')
-            newElem.set('d', cubicsuperpath.formatPath(getCubicSuperFromParts(newParts)))
+            newElem.set('d', formatSuperPath(getCubicSuperFromParts(newParts)))
             newElem.set('id', oldId + '_joined')
             parent.insert(idx, newElem)
 
-effect = JoinPathsEffect()
-effect.affect()
+runEffect(JoinPathsEffect())
