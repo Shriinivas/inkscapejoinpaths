@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 
 '''
 Inkscape extension to join the selected paths. With the optimized option selected, 
@@ -22,9 +22,17 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 '''
 
-import inkex
-from inkex.paths import CubicSuperPath
-import copy
+import inkex, copy
+from math import sqrt
+
+# TODO: Find inkscape version
+try:
+    from inkex.paths import Path, CubicSuperPath
+    ver = 1.0 
+except:
+    import simplepath, cubicsuperpath
+    from cubicsuperpath import CubicSuperPath
+    ver = 0.92
 
 def floatCmpWithMargin(float1, float2, margin):
     return abs(float1 - float2) < margin 
@@ -44,25 +52,7 @@ def getPartsFromCubicSuper(cspath):
             prevBezPt = bezierPt
         parts.append(part)
     return parts
-        
-def getCubicSuperFromParts(parts):
-    cbsuper = []
-    for part in parts:
-        subpath = []
-        lastPt = None
-        pt = None
-        for seg in part:
-            if(pt == None):
-                ptLeft = seg[0]
-                pt = seg[0]
-            ptRight = seg[1]
-            subpath.append([ptLeft, pt, ptRight])
-            ptLeft = seg[2]
-            pt = seg[3]
-        subpath.append([ptLeft, pt, pt])
-        cbsuper.append(subpath)
-    return cbsuper
-    
+
 def getArrangedIds(pathMap, startPathId):
     nextPathId = startPathId
     orderPathIds = [nextPathId]
@@ -84,43 +74,120 @@ def getArrangedIds(pathMap, startPathId):
             end = parts[-1][-1][-1]
             
             for i, npPt in enumerate(npPts):
-                dist = abs(start[0] - npPt[0]) + abs(start[1] - npPt[1])
+                dist = sqrt((start[0] - npPt[0]) ** 2 + (start[1] - npPt[1]) ** 2)
+                found = False
                 if(dist < minDist):
+                    found = True
                     minDist = dist
                     closestId = key
-                dist = abs(end[0] - npPt[0]) + abs(end[1] - npPt[1])
+                dist = sqrt((end[0] - npPt[0]) ** 2 + (end[1] - npPt[1]) ** 2)
                 if(dist < minDist):
+                    found = True
                     minDist = dist
                     pathMap[key] = [[[pts for pts in reversed(seg)] for seg in \
                         reversed(part)] for part in reversed(parts)]
                     closestId = key
                     
                 #If start point of the first path is closer reverse its direction    
-                if(i > 0 and closestId == key):
+                if(i > 0 and found):
                     pathMap[nextPathId] = [[[pts for pts in reversed(seg)] for seg in \
                         reversed(part)] for part in reversed(np)]
                     
         orderPathIds.append(closestId)
         nextPathId = closestId
+
     return orderPathIds
     
+######### Function variants for 1.0 and 0.92 - Start ##########
+
+def getCubicSuperPath(d = None):
+    if(ver == 1.0):
+        if(d == None): return CubicSuperPath([])
+        return CubicSuperPath(Path(d).to_superpath())
+    else:
+        if(d == None): return []
+        return CubicSuperPath(simplepath.parsePath(d))
+
+def getCubicSuperFromParts(parts):
+    cbsuper = []
+    for part in parts:
+        subpath = []
+        lastPt = None
+        pt = None
+        for seg in part:
+            if(pt == None):
+                ptLeft = seg[0]
+                pt = seg[0]
+            ptRight = seg[1]
+            subpath.append([ptLeft, pt, ptRight])
+            ptLeft = seg[2]
+            pt = seg[3]
+        subpath.append([ptLeft, pt, pt])
+        cbsuper.append(subpath)
+    if(ver == 1.0):
+        return CubicSuperPath(cbsuper)
+    else:
+        return cbsuper
+
+def formatSuperPath(csp):
+    if(ver == 1.0):
+        return csp.__str__()
+    else:
+        return cubicsuperpath.formatPath(csp)
+
+def getParent(effect, elem):
+    if(ver == 1.0): 
+        return elem.getparent()
+    else:
+        return effect.getParentNode(elem)
+
+def getSVGElem(effect):
+    if(ver == 1.0): 
+        return effect.svg
+    else: 
+        return effect
+
+def getAddFnTypes(effect):
+    if(ver == 1.0): 
+        addFn = effect.arg_parser.add_argument
+        typeFloat = float
+        typeInt = int
+        typeString = str
+        typeBool = inkex.Boolean
+    else: 
+        addFn = effect.OptionParser.add_option
+        typeFloat = 'float'
+        typeInt = 'int'
+        typeString = 'string'
+        typeBool = 'inkbool'
+
+    return addFn, typeFloat, typeInt, typeString, typeBool
+
+def runEffect(effect):
+    if(ver == 1.0): effect.run()
+    else: effect.affect()
+
+######### Function variants for 1.0 and 0.92 - End ##########
+
 class JoinPathsOptimEffect(inkex.Effect):
 
     def __init__(self):
         inkex.Effect.__init__(self)
-        self.arg_parser.add_argument("--optimized", type=inkex.Boolean, default=True)
-        self.arg_parser.add_argument("--tab", default="sampling", help="Tab") 
+        addFn, typeFloat, typeInt, typeString, typeBool = getAddFnTypes(self)
+        addFn("--optimized", type = typeBool, default = True)
+        addFn("--tab", default = "sampling", help = "Tab") 
           
     def effect(self):
-        selections = self.svg.selected        
+        selections = getSVGElem(self).selected        
         pathNodes = self.document.xpath('//svg:path',namespaces=inkex.NSS)
 
-        paths = {p.get('id'): getPartsFromCubicSuper(CubicSuperPath(p.get('d'))) for p in  pathNodes }
+        paths = {p.get('id'): getPartsFromCubicSuper(getCubicSuperPath(p.get('d'))) \
+            for p in  pathNodes if (p.get('id') in selections.keys() and p.get('d') != "")}        
             
         #paths.keys() Order disturbed
-        pathIds = [p.get('id') for p in pathNodes]
+        pathIds = [p.get('id') for p in pathNodes if (p.get('id') in paths.keys())]
         
-        if(len(paths) > 1):
+        if(len(pathIds) > 1):
             if(self.options.optimized):
                 startPathId = pathIds[0]
                 pathIds = getArrangedIds(paths, startPathId)
@@ -131,7 +198,7 @@ class JoinPathsOptimEffect(inkex.Effect):
                 parts = paths[key]
                 # ~ parts = getPartsFromCubicSuper(cspath)
                 start = parts[0][0][0]
-                elem = self.svg.selected[key]
+                elem = selections[key]
                 
                 if(len(newParts) == 0):
                     newParts += parts[:]
@@ -147,14 +214,14 @@ class JoinPathsOptimEffect(inkex.Effect):
                     if(len(parts) > 1):
                         newParts += parts[1:]
                 
-                parent = elem.getparent()
+                parent = getParent(self, elem)
                 idx = parent.index(elem)
                 parent.remove(elem)
 
             newElem = copy.copy(firstElem)
             oldId = firstElem.get('id')
-            newElem.set('d', CubicSuperPath(getCubicSuperFromParts(newParts)))
+            newElem.set('d', formatSuperPath(getCubicSuperFromParts(newParts)))
             newElem.set('id', oldId + '_joined')
             parent.insert(idx, newElem)
 
-JoinPathsOptimEffect().run()
+runEffect(JoinPathsOptimEffect())
