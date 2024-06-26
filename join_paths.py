@@ -1,9 +1,8 @@
 #!/usr/bin/env python
-
-'''
+"""
 Inkscape extension to join the selected paths
 
-Copyright (C) 2018  Shrinivas Kulkarni
+Author: Shrinivas Kulkarni (khemadeva@gmail.com)
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -18,135 +17,135 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License along
 with this program; if not, write to the Free Software Foundation, Inc.,
 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
-'''
+"""
 
-import inkex, copy
+import inkex
+from inkex import PathElement, Path, Boolean
+from inkex.bezier import pointdistance
 
-try:
-    from inkex.paths import Path, CubicSuperPath
-    ver = 1.0
-except:
-    import simplepath, cubicsuperpath
-    from cubicsuperpath import CubicSuperPath
-    ver = 0.92
 
-def floatCmpWithMargin(float1, float2, margin):
-    return abs(float1 - float2) < margin
-
-def vectCmpWithMargin(vect1, vect2, margin):
-    return all(floatCmpWithMargin(vect2[i], vect1[i], margin) for i in range(0, len(vect1)))
-
-def getPartsFromCubicSuper(cspath):
-    parts = []
-    for subpath in cspath:
-        part = []
-        prevBezPt = None
-        for i, bezierPt in enumerate(subpath):
-            if(prevBezPt != None):
-                seg = [prevBezPt[1], prevBezPt[2], bezierPt[0], bezierPt[1]]
-                part.append(seg)
-            prevBezPt = bezierPt
-        parts.append(part)
-    return parts
-
-def runEffect(effect):
-    if(ver == 1.0): effect.run()
-    else: effect.affect()
-
-######### Function variants for 1.0 and 0.92 - Start ##########
-
-def formatSuperPath(csp):
-    if(ver == 1.0):
-        return csp.__str__()
-    else:
-        return cubicsuperpath.formatPath(csp)
-
-def getParent(effect, elem):
-    if(ver == 1.0):
-        return elem.getparent()
-    else:
-        return effect.getParentNode(elem)
-
-def getCubicSuperPath(d = None):
-    if(ver == 1.0):
-        if(d == None): return CubicSuperPath([])
-        return CubicSuperPath(Path(d).to_superpath())
-    else:
-        if(d == None): return []
-        return CubicSuperPath(simplepath.parsePath(d))
-
-def getCubicSuperFromParts(parts):
-    cbsuper = []
-    for part in parts:
-        subpath = []
-        lastPt = None
-        pt = None
-        for seg in part:
-            if(pt == None):
-                ptLeft = seg[0]
-                pt = seg[0]
-            ptRight = seg[1]
-            subpath.append([ptLeft, pt, ptRight])
-            ptLeft = seg[2]
-            pt = seg[3]
-        subpath.append([ptLeft, pt, pt])
-        cbsuper.append(subpath)
-    if(ver == 1.0):
-        return CubicSuperPath(cbsuper)
-    else:
-        return cbsuper
-
-def getSelections(effect):
-    if(ver == 1.0):
-        return {n.get('id'): n for n in effect.svg.selection.filter(inkex.PathElement)}
-    else:
-        return effect.selected
-
-######### Function variants for 1.0 and 0.92 - End ##########
-
-class JoinPathsEffect(inkex.Effect):
-
-    def __init__(self):
-        inkex.Effect.__init__(self)
+class ConnectPaths(inkex.EffectExtension):
+    def add_arguments(self, pars):
+        pars.add_argument("--factor", type=float, default=0.2)
+        pars.add_argument("--path_order", type=str, default="z_order")
+        pars.add_argument("--subpath_handling", type=str, default="break_apart")
+        pars.add_argument("--close_path", type=Boolean, default=True)
+        pars.add_argument("--delete_orig", type=Boolean, default=False)
+        pars.add_argument("--tab", help="Select Options")
 
     def effect(self):
-        selections = getSelections(self)
-        pathNodes = self.document.xpath('//svg:path',namespaces=inkex.NSS)
+        paths = self.svg.selection.get(PathElement)
+        if len(paths) < 2:
+            inkex.errormsg("Please select at least 2 paths to join.")
+            return
 
-        paths = [(pathNode.get('id'), getCubicSuperPath(pathNode.get('d'))) \
-            for pathNode in  pathNodes if (pathNode.get('id') in selections.keys() \
-            and pathNode.get('d') != "")]
+        path_order = self.options.path_order
+        subpath_handling = self.options.subpath_handling
+        close_path = self.options.close_path
+        delete_orig = self.options.delete_orig
+        factor = self.options.factor
 
-        if(len(paths) > 1):
-            newParts = []
-            firstElem = None
-            for key, cspath in paths:
-                parts = getPartsFromCubicSuper(cspath)
-                start = parts[0][0][0]
-                elem = selections[key]
+        ordered_paths = self.order_paths(paths, path_order, subpath_handling)
+        connected_path = self.connect_paths(ordered_paths, close_path, factor)
 
-                if(len(newParts) == 0):
-                    newParts += parts[:]
-                    firstElem = elem
+        if close_path:
+            connected_path.close()
+
+        new_path = PathElement()
+        new_path.path = connected_path
+        new_path.style = paths[0].style
+        self.svg.add(new_path)
+
+        if delete_orig:
+            for p in paths:
+                p.getparent().remove(p)
+
+    def order_paths(self, pathElems, order_type, subpath_handling):
+        def get_paths():
+            if subpath_handling == "break_apart":
+                return [
+                    sub.transform(p.composed_transform())
+                    for p in pathElems
+                    for sub in p.path.to_absolute().break_apart()
+                ]
+            else:
+                return [
+                    p.path.to_absolute().transform(p.composed_transform())
+                    for p in pathElems
+                ]
+
+        if order_type in {
+            "selection_order",
+            "z_order",
+            "selection_order_rev",
+            "z_order_rev",
+        }:
+            if order_type == "z_order":
+                pathElems = pathElems.rendering_order()
+            pathElems = pathElems.values()  # for the sake of uniformity
+            if order_type.endswith("_rev"):
+                pathElems = reversed(pathElems)
+            return get_paths()
+        elif order_type == "distance":
+            paths = get_paths()
+            ordered = [paths[0]]
+            remaining = paths[1:]
+            while remaining:
+                end_point = list(ordered[-1].end_points)[-1]
+                cmp_paths = []
+                for ppath in remaining:
+                    pts = list(ppath.end_points)
+                    cmp_paths.append([ppath, pts[0], True])
+                    cmp_paths.append([ppath, pts[-1], False])
+                nearest = min(cmp_paths, key=lambda p: pointdistance(end_point, p[1]))
+                next_path = nearest[0] if nearest[2] else nearest[0].reverse()
+                ordered.append(next_path)
+                remaining.remove(nearest[0])
+            return ordered
+
+    def connect_paths(self, paths, close_path, factor) -> Path:
+        connected = paths[0]
+        connected_csp = connected.to_superpath()
+        list_paths = paths[1:] + ([paths[0]] if close_path else [])
+        for i, path in enumerate(list_paths):
+            if factor == 0:
+                if i < len(list_paths) - 1 or not close_path:
+                    next_start = next(path.proxy_iterator()).first_point
+                    connected.append(Path(f"L {next_start[0]},{next_start[1]}"))
+                    connected.extend(path[1:])
+            else:
+                last_segment = connected_csp[-1][-1]
+                last_endpoint = last_segment[1]
+                last_ctrl_pt = last_segment[0]
+                prev_point = connected_csp[-1][-2][1]
+                last_segment[2] = self.find_opposite_point(
+                    last_endpoint, last_ctrl_pt, prev_point, factor
+                )
+
+                next_path_csp = path.to_superpath()
+                first_segment = next_path_csp[0][0]
+                first_startpt = first_segment[1]
+                first_ctrl_pt = first_segment[2]
+                next_point = next_path_csp[0][1][1]
+                first_segment[0] = self.find_opposite_point(
+                    first_startpt, first_ctrl_pt, next_point, factor
+                )
+                if i < len(list_paths) - 1 or not close_path:
+                    connected_csp[-1] += next_path_csp[0]
                 else:
-                    if(vectCmpWithMargin(start, newParts[-1][-1][-1], margin = .01)):
-                        newParts[-1] += parts[0]
-                    else:
-                        newSeg = [newParts[-1][-1][-1], newParts[-1][-1][-1], start, start]
-                        newParts[-1].append(newSeg)
-                        newParts[-1] += parts[0]
+                    connected_csp[-1].append(next_path_csp[0][0])
+        if factor != 0:
+            connected = Path(connected_csp)
 
-                    if(len(parts) > 1):
-                        newParts += parts[1:]
+        return connected
 
-                parent = getParent(self, elem)
-                idx = parent.index(elem)
-                parent.remove(elem)
+    def find_opposite_point(self, p1, p2, fall_back, factor):
+        factor = -factor
+        if all(p1[i] == p2[i] for i in range(2)):
+            p2 = fall_back
+        # get point away from p1 at a factor of p2's distance from p1
+        return [((1 - factor) * p1[i] + factor * p2[i]) for i in range(2)]
 
-            newElem = copy.copy(firstElem)
-            oldId = firstElem.get('id')
-            newElem.set('d', formatSuperPath(getCubicSuperFromParts(newParts)))
-            newElem.set('id', oldId + '_joined')
-            parent.insert(idx, newElem)
 
-runEffect(JoinPathsEffect())
+if __name__ == "__main__":
+    ConnectPaths().run()

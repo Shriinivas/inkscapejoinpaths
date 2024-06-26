@@ -1,14 +1,59 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <inkscape-extension xmlns="http://www.inkscape.org/namespace/inkscape/extension">
-    <_name>Join Paths</_name>
-    <id>join.svg.paths</id>
-    <effect>
-        <object-type>path</object-type>
-        <effects-menu>
-            <submenu _name="Modify Path"/>
-        </effects-menu>
-   </effect>
-    <script>
-        <command reldir="extensions" interpreter="python">join_paths.py</command>
-    </script>
+  <name>Connect Paths</name>
+  <id>org.khema.connect_paths</id>
+  <param name="tab" type="notebook">
+    <page gui-text="Options" name="options">
+      <param gui-text="Curvature Factor:" name="factor" type="float" min='-999' max='999'>1</param>
+      <param appearance="combo" gui-text="Path Order:" name="path_order" type="optiongroup">
+        <option value="selection_order">Selection Order</option>
+        <option value="selection_order_rev">Selection Order Reversed</option>
+        <option value="z_order">Z-order</option>
+        <option value="z_order_rev">Z-order Reversed</option>
+        <option value="distance">Distance</option>
+      </param>
+      <param appearance="combo" gui-text="Composite Path Handling:" name="subpath_handling" type="optiongroup">
+        <option value="break_apart">Break Apart and Join Separately</option>
+        <option value="single_path">Treat as Single Path</option>
+      </param>
+      <param gui-text="Close Path:" name="close_path" type="bool">true</param>
+      <param gui-text="Delete Original:" name="delete_orig" type="bool">false</param>
+    </page>
+    <page gui-text="Help" name="help">
+            <label xml:space="preserve">
+This extension connects multiple SVG paths in your document.
+
+Usage:
+1. Select two or more paths to connect.
+2. Choose your options:
+   Curvature Factor:
+   - 0 creates straight lines.
+   - Positive values create outward curves, negative values create inward curves.
+   - Higher absolute values increase curve intensity.
+
+   Path Order:
+   - Selection Order (Reversed): Connects paths in the (Reversed) order they were selected.
+   - Z-order (Reversed): Connects paths based on their (Reversed) stack order in the document.
+   - Distance: Connects paths based on proximity. First selected path is the start.
+
+   Composite Path Handling:
+   - Break Apart: Treats each subpath as separate for connecting.
+   - Treat as Single: Connects the entire composite path as one unit.
+
+   Close Path: If checked, connects the last path back to the first.
+   Delete Original: If checked, deletes the original paths after connecting.
+
+3. Click "Apply" to connect the paths.
+            </label>
+    </page>
+  </param>
+  <effect>
+    <object-type>path</object-type>
+    <effects-menu>
+      <submenu name="Generate from Path"></submenu>
+    </effects-menu>
+  </effect>
+  <script>
+    <command interpreter="python" location="inx">join_paths.py</command>
+  </script>
 </inkscape-extension>

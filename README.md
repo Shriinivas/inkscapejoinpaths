@@ -1,22 +1,50 @@
-### (Compatible with Inkscape versions 1.0 and 0.92)
-![Demo](https://github.com/Shriinivas/etc/blob/master/inkscapejoinpaths/illustrations/inkscape_joinpaths_demo.gif)
-# Inkscape Extension For Joining Paths<br>
-This extension lets the user join SVG paths <br>
+# Connect Paths - Inkscape Extension
 
-# Installation
-There are two variants of this extension.<br><br>
-<b>Without Optimized Option</b><br>
-Script Files join_paths.py and join_paths.inx<br><br>
-<b>With Optimized Option</b><br>
-Script Files join_paths_optim.py and join_paths_optim.inx<br><br>
-To install the extension copy the py and inx files in the user extension folder. The extension folder can be found from Edit->Preference dialog in the System option. You will need to restart inkscape after the files are copied.<br><br>
-# Usage
-After installation the extensions will be under Extensions->Modify Path menu. <br><br>
-<b>Without Optimized Option</b><br>
-Select the paths that are to be joined and invoke the 'Join Paths' menu option. The selected paths will be joined based on their Z-order (i.e. the lowest one in the document first and then the next one and so on) at their end nodes with a straight line segment. <br>
-If the ending nodes of the paths coincide, they are merged and no new segment is created.<br><br>
-<b>With Optimized Option</b><br>
-This extension (Join Path Optimized) has a single option in the tool dialog, which says 'optimized'. When the option is unchecked the behavior is the same as the Join Paths extension described above. If it's checked, the paths are joined starting with the one with the lowest Z-order (one at the bottom most position in the document) and the successive paths to be joined are chosen based on the distance of their end nodes to the ending node of the earlier path, i.e. the one with one of the end nodes closest to the ending node of the earlier path is joined to it.<br><br>
+This Inkscape extension allows you to connect multiple SVG paths in your document with various options for customization.
 
-# Tutorials
-Quick Introduction: https://youtu.be/mC7rtjkT4kc
+## Features
+
+- Connect all the selected paths with adjustable curvature or straight line
+- Multiple options for determining connection order
+- Handling of composite paths
+
+## Installation
+
+1. Download the `join_paths.inx` and `join_paths.py` files.
+2. Place these files in your Inkscape extensions folder (you will find this in System menu under Edit-Preferences).
+3. Restart Inkscape if it's already running.
+
+## Usage
+
+1. Open your SVG file in Inkscape.
+2. Select two or more paths or open shapes you want to connect.
+3. Go to Extensions > Generate from Path > Connect Paths.
+4. Choose your desired options:
+
+   - **Curvature Factor**:
+
+     - 0 creates straight lines.
+     - Positive values create outward curves, negative values create inward curves.
+     - Higher absolute values increase curve intensity.
+
+   - **Path Order**:
+
+     - Selection Order: Connects paths in the order they were selected.
+     - Selection Order Reversed: Connects paths in reverse selection order.
+     - Z-order: Connects paths based on their stack order in the document.
+     - Z-order Reversed: Connects paths in reverse stack order.
+     - Distance: Connects paths based on proximity. The first selected path is the starting point.
+
+   - **Composite Path Handling**:
+
+     - Break Apart and Join Separately: Treats each subpath as separate for connecting.
+     - Treat as Single Path: Connects the entire composite path as one unit.
+
+   - **Close Path**: If checked, connects the last path back to the first.
+   - **Delete Original**: If checked, deletes the original paths after connecting.
+
+5. Click "Apply" to connect the paths.
+
+## License
+
+[GPL2](https://github.com/Shriinivas/inkscapejoinpaths/blob/master/LICENSE)
