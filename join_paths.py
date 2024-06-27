@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 """
-Inkscape extension to join the selected paths
+Inkscape extension to join the selected paths.
+Tested with Inkscape version 1.3.2
 
 Author: Shrinivas Kulkarni (khemadeva@gmail.com)
 
@@ -22,6 +23,7 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 import inkex
 from inkex import PathElement, Path, Boolean
 from inkex.bezier import pointdistance
+from copy import copy
 
 
 class ConnectPaths(inkex.EffectExtension):
@@ -52,9 +54,13 @@ class ConnectPaths(inkex.EffectExtension):
             connected_path.close()
 
         new_path = PathElement()
+        new_path.attrib.update(copy(paths[0].attrib))
+
+        layer = self.svg.get_current_layer()
+        connected_path.transform(-layer.composed_transform())  # Just in case
         new_path.path = connected_path
-        new_path.style = paths[0].style
-        self.svg.add(new_path)
+
+        layer.add(new_path)
 
         if delete_orig:
             for p in paths:
@@ -117,7 +123,7 @@ class ConnectPaths(inkex.EffectExtension):
                 last_segment = connected_csp[-1][-1]
                 last_endpoint = last_segment[1]
                 last_ctrl_pt = last_segment[0]
-                prev_point = connected_csp[-1][-2][1]
+                prev_point = connected_csp[-1][-2][2]
                 last_segment[2] = self.find_opposite_point(
                     last_endpoint, last_ctrl_pt, prev_point, factor
                 )
@@ -126,7 +132,7 @@ class ConnectPaths(inkex.EffectExtension):
                 first_segment = next_path_csp[0][0]
                 first_startpt = first_segment[1]
                 first_ctrl_pt = first_segment[2]
-                next_point = next_path_csp[0][1][1]
+                next_point = next_path_csp[0][1][0]
                 first_segment[0] = self.find_opposite_point(
                     first_startpt, first_ctrl_pt, next_point, factor
                 )
