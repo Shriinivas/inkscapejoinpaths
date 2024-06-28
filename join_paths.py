@@ -23,7 +23,6 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 import inkex
 from inkex import PathElement, Path, Boolean
 from inkex.bezier import pointdistance
-from copy import copy
 
 
 class ConnectPaths(inkex.EffectExtension):
