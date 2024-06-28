@@ -54,7 +54,7 @@ class ConnectPaths(inkex.EffectExtension):
             connected_path.close()
 
         new_path = PathElement()
-        new_path.attrib.update(copy(paths[0].attrib))
+        self.copy_style(paths[0], new_path)
 
         layer = self.svg.get_current_layer()
         connected_path.transform(-layer.composed_transform())  # Just in case
@@ -65,6 +65,22 @@ class ConnectPaths(inkex.EffectExtension):
         if delete_orig:
             for p in paths:
                 p.getparent().remove(p)
+
+    def copy_style(self, source_path, target_path):
+        if source_path.style:
+            target_path.style = source_path.style
+
+        style_attributes = [
+            "fill",
+            "stroke",
+            "stroke-width",
+            "opacity",
+            "fill-opacity",
+            "stroke-opacity",
+        ]
+        for attr in style_attributes:
+            if attr in source_path.attrib:
+                target_path.set(attr, source_path.get(attr))
 
     def order_paths(self, pathElems, order_type, subpath_handling):
         def get_paths():
